@@ -1,0 +1,2835 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INPN - Visualiseur de Métadonnées (JDD & CA)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Grist Custom Widget API -->
+    <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Couleurs INPN */
+        :root {
+            --inpn-green: #238a97;
+            --inpn-green-dark: #1b6d78;
+            --inpn-green-light: #32a8b8;
+            --inpn-beige: #f4f0e8;
+            --inpn-brown: #8b7355;
+            --inpn-text: #333333;
+            --inpn-border: #e0ddd5;
+            --inpn-card-bg: #ffffff;
+            --inpn-tag-bg: #e8f4f6;
+        }
+
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            padding: 0;
+            border-bottom: 4px solid var(--inpn-green);
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--inpn-green);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .navbar-info {
+            font-size: 13px;
+            color: #777;
+            font-style: italic;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Barre supérieure : Onglets principaux et Filtre d'accès */
+        .tabs-and-access-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .table-tabs {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .access-filter-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 2px solid var(--inpn-border);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+            flex: 1;
+            max-width: 440px;
+            min-width: 280px;
+        }
+
+        .access-filter-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--inpn-green-dark);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .access-search-box {
+            flex: 1;
+            position: relative;
+            min-width: 160px;
+        }
+
+        .access-search-box input {
+            width: 100%;
+            padding: 8px 36px 8px 12px;
+            border: 1.5px solid var(--inpn-border);
+            border-radius: 6px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+            font-family: 'Open Sans', sans-serif;
+            background: #fafafa;
+            color: #333333;
+
+        }
+
+        .access-search-box input:focus {
+            outline: none;
+            border-color: var(--inpn-green);
+            box-shadow: 0 0 0 3px rgba(35, 138, 151, 0.15);
+            background: white;
+        }
+
+        .access-search-box .search-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 14px;
+        }
+
+        .table-tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 22px;
+            background: white;
+            border: 2px solid var(--inpn-border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            color: #555;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .table-tab-btn:hover {
+            border-color: var(--inpn-green);
+            color: var(--inpn-green);
+            transform: translateY(-1px);
+        }
+
+        .table-tab-btn.active {
+            background: var(--inpn-green);
+            color: white;
+            border-color: var(--inpn-green);
+            box-shadow: 0 4px 12px rgba(35, 138, 151, 0.3);
+        }
+
+        .table-tab-badge {
+            background: var(--inpn-beige);
+            color: var(--inpn-green-dark);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 12px;
+        }
+
+        .table-tab-btn.active .table-tab-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: white;
+        }
+
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border-left: 5px solid var(--inpn-green);
+        }
+
+        .header-title-area h1 {
+            color: var(--inpn-green);
+            margin-bottom: 6px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header-title-area p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 260px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 40px 10px 15px;
+            border: 2px solid var(--inpn-border);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: 'Open Sans', sans-serif;
+            background: #fafafa;
+                color: #333333;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--inpn-green);
+            box-shadow: 0 0 0 3px rgba(35, 138, 151, 0.15);
+            background: white;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 16px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 6px;
+            background: transparent;
+            padding: 0;
+            border-radius: 6px;
+            flex-wrap: wrap;
+        }
+
+        .view-btn {
+            padding: 9px 16px;
+            border: 2px solid var(--inpn-border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.25s;
+            color: #666;
+            white-space: nowrap;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .view-btn:hover {
+            border-color: var(--inpn-green);
+            color: var(--inpn-green);
+        }
+
+        .view-btn.active {
+            background: var(--inpn-green);
+            color: white;
+            border-color: var(--inpn-green);
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: var(--inpn-beige);
+            padding: 14px 18px;
+            border-radius: 6px;
+            border-left: 4px solid var(--inpn-green);
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--inpn-green);
+            margin-top: 4px;
+        }
+
+        /* Conteneurs de vues */
+        .view-container {
+            display: none;
+        }
+
+        .view-container.active {
+            display: block;
+        }
+
+        /* Styles Tableau */
+        .table-view {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 700px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: var(--inpn-green);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: background-color 0.2s;
+        }
+
+        th:hover {
+            background: var(--inpn-green-dark);
+        }
+
+        .sort-icon {
+            margin-left: 6px;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--inpn-border);
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+
+        tbody tr:hover {
+            background: var(--inpn-beige);
+        }
+
+        td {
+            padding: 12px 16px;
+            color: var(--inpn-text);
+            max-width: 280px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .table-action-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--inpn-tag-bg);
+            color: var(--inpn-green);
+            border: 1px solid var(--inpn-green);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .table-action-btn:hover {
+            background: var(--inpn-green);
+            color: white;
+        }
+
+        /* Styles Fiche Métadonnées */
+        .metadata-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border-left: 4px solid var(--inpn-green);
+            margin-bottom: 18px;
+        }
+
+        .metadata-nav-info {
+            font-size: 14px;
+            color: var(--inpn-text);
+            font-weight: 700;
+        }
+
+        .metadata-nav-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .metadata-nav-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--inpn-border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.25s;
+            color: var(--inpn-text);
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .metadata-nav-btn:hover:not(:disabled) {
+            border-color: var(--inpn-green);
+            color: var(--inpn-green);
+        }
+
+        .metadata-nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .metadata-edit-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metadata-edit-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-edit-mode {
+            background: #e8f4f6;
+            color: var(--inpn-green-dark);
+            border-color: var(--inpn-green);
+        }
+
+        .btn-edit-mode:hover:not(:disabled) {
+            background: var(--inpn-green);
+            color: white;
+        }
+
+        .btn-edit-mode:disabled {
+            background: #f5f7f8;
+            color: #8c9ba5;
+            border-color: #d1dbe0;
+            cursor: not-allowed;
+            opacity: 0.85;
+        }
+
+        .btn-save {
+            background: var(--inpn-green);
+            color: white;
+            border-color: var(--inpn-green-dark);
+        }
+
+        .btn-save:hover:not(:disabled) {
+            background: var(--inpn-green-dark);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: #fff0f0;
+            color: #c0392b;
+            border-color: #e74c3c;
+        }
+
+        .btn-cancel:hover:not(:disabled) {
+            background: #c0392b;
+            color: white;
+        }
+
+        .metadata-edit-status-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 18px;
+            margin-bottom: 18px;
+            border-radius: 8px;
+            background: #eef8fa;
+            border: 1px solid var(--inpn-green-light);
+            border-left: 5px solid var(--inpn-green);
+            font-size: 13px;
+            color: var(--inpn-green-dark);
+            font-weight: 600;
+        }
+
+        .metadata-edit-status-banner.error {
+            background: #fff0f0;
+            border-color: #f5c6cb;
+            border-left-color: #e74c3c;
+            color: #721c24;
+        }
+
+        .metadata-edit-status-banner.success {
+            background: #eafaf1;
+            border-color: #c3e6cb;
+            border-left-color: #27ae60;
+            color: #155724;
+        }
+
+        /* Formulaires d'édition pour les fiches */
+        .form-control-input,
+        .form-control-textarea,
+        .form-control-select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--inpn-border);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--inpn-text);
+            background: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control-input:focus,
+        .form-control-textarea:focus,
+        .form-control-select:focus {
+            outline: none;
+            border-color: var(--inpn-green);
+            box-shadow: 0 0 0 2px rgba(35, 138, 151, 0.2);
+        }
+
+        .form-control-input.is-invalid,
+        .form-control-textarea.is-invalid,
+        .form-control-select.is-invalid {
+            border-color: #e74c3c !important;
+            background-color: #fff9f9 !important;
+            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
+        }
+
+        .form-field-error {
+            display: block;
+            color: #e74c3c;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+
+        .form-control-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .metadata-field.editing {
+            background: #ffffff;
+            border-left-color: var(--inpn-green);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .metadata-card {
+            background: white;
+            border-radius: 8px;
+            padding: 28px 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border-left: 5px solid var(--inpn-green);
+        }
+
+        .metadata-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 25px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid var(--inpn-border);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .metadata-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--inpn-green);
+            flex: 1;
+            min-width: 250px;
+            word-break: break-word;
+        }
+
+        .metadata-status {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .metadata-badge {
+            background: var(--inpn-green);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .metadata-badge.secondary {
+            background: var(--inpn-brown);
+        }
+
+        .metadata-section {
+            margin-bottom: 28px;
+        }
+
+        .metadata-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            background: var(--inpn-green);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 15px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metadata-section-title .section-icon {
+            font-size: 15px;
+        }
+
+        .metadata-rows {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px 22px;
+        }
+
+        .metadata-field {
+            display: flex;
+            flex-direction: column;
+            background: #fafafa;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border-left: 3px solid var(--inpn-border);
+        }
+
+        .metadata-field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .metadata-field-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--inpn-brown);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .metadata-field-value {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--inpn-text);
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .metadata-field-value a {
+            color: var(--inpn-green);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .metadata-field-value a:hover {
+            text-decoration: underline;
+        }
+
+        .bool-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .bool-true {
+            background: #e6f4ea;
+            color: #137333;
+        }
+
+        .bool-false {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+
+        /* Acteurs */
+        .actors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .actor-group {
+            background: var(--inpn-beige);
+            border-left: 4px solid var(--inpn-green);
+            padding: 14px 16px;
+            border-radius: 6px;
+        }
+
+        .actor-group-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--inpn-green);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            padding-bottom: 6px;
+        }
+
+        .actor-detail {
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .actor-detail:last-child {
+            margin-bottom: 0;
+        }
+
+        .actor-detail-label {
+            font-weight: 700;
+            color: var(--inpn-brown);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .actor-detail-value {
+            font-size: 13px;
+            color: var(--inpn-text);
+            word-break: break-word;
+        }
+
+        .metadata-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 18px;
+            border-top: 2px solid var(--inpn-border);
+            flex-wrap: wrap;
+        }
+
+        .metadata-btn {
+            padding: 10px 18px;
+            border: 2px solid var(--inpn-green);
+            background: white;
+            color: var(--inpn-green);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.25s;
+            font-family: 'Open Sans', sans-serif;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .metadata-btn:hover {
+            background: var(--inpn-green);
+            color: white;
+        }
+
+        .metadata-btn.primary {
+            background: var(--inpn-green);
+            color: white;
+        }
+
+        .metadata-btn.primary:hover {
+            background: var(--inpn-green-dark);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 20px;
+            padding: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            padding: 7px 12px;
+            border: 2px solid var(--inpn-border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.25s;
+            color: var(--inpn-text);
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--inpn-green);
+            color: var(--inpn-green);
+        }
+
+        .page-btn.active {
+            background: var(--inpn-green);
+            color: white;
+            border-color: var(--inpn-green);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* États vide et chargement */
+        .empty-state, .loading-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #777;
+        }
+
+        .empty-icon, .spinner {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            border: 4px solid var(--inpn-beige);
+            border-top: 4px solid var(--inpn-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .tabs-and-access-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .table-tabs {
+                width: 100%;
+            }
+
+            .table-tab-btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .access-filter-box {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .header {
+                padding: 18px;
+            }
+
+            .metadata-card {
+                padding: 18px;
+            }
+
+            .metadata-title {
+                font-size: 18px;
+            }
+
+            .metadata-rows {
+                grid-template-columns: 1fr;
+            }
+
+            .metadata-navigation {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .metadata-nav-buttons {
+                width: 100%;
+            }
+
+            .metadata-nav-btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Barre de navigation INPN -->
+    <div class="navbar">
+        <div class="navbar-content">
+            <a href="#" class="navbar-brand">🌿 Métadonnées à destination de l'INPN</a>
+            <div class="navbar-info">Inventaire National du Patrimoine Naturel — Métadonnées Grist</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Barre supérieure : Onglets principaux (JDD / CA) et Filtre d'accès utilisateur (mailContact) -->
+        <div class="tabs-and-access-bar">
+            <div class="table-tabs" role="tablist">
+                <button class="table-tab-btn active" id="tabBtnJDD" data-table="JDD_Formulaire" onclick="viewer.switchTable('JDD_Formulaire')">
+                    <span>🌿</span>
+                    <span>Jeux de Données (JDD)</span>
+                    <span class="table-tab-badge" id="tabBadgeJDD">0</span>
+                </button>
+                <button class="table-tab-btn" id="tabBtnCA" data-table="CA_Formulaire" onclick="viewer.switchTable('CA_Formulaire')">
+                    <span>📁</span>
+                    <span>Cadres d'Acquisition (CA)</span>
+                    <span class="table-tab-badge" id="tabBadgeCA">0</span>
+                </button>
+            </div>
+
+            <div class="access-filter-box">
+                <label for="userFilterInput" class="access-filter-label">🔑 Accès :</label>
+                <div class="access-search-box">
+                    <input
+                        type="text"
+                        id="userFilterInput"
+                        placeholder="Email utilisateur (mailContact) ou token..."
+                        aria-label="Filtre d'accès par mailContact ou token"
+                    >
+                    <span class="search-icon">👤</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header">
+            <div class="header-title-area">
+                <h1 id="headerTitle">Visualiseur de Métadonnées — Jeux de Données</h1>
+                <p id="headerDescription">Consultation des fiches de jeux de données avec acteurs organisés par type</p>
+            </div>
+
+            <div class="controls">
+                <div class="search-box">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Rechercher dans les données du volet..."
+                        aria-label="Rechercher"
+                    >
+                    <span class="search-icon">🔍</span>
+                </div>
+
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="table" onclick="viewer.switchView('table')">📋 Tableau</button>
+                    <button class="view-btn" data-view="metadata" onclick="viewer.switchView('metadata')">📄 Fiche</button>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label" id="statRowsLabel">Jeux de données</div>
+                    <div class="stat-value" id="totalRows">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Champs</div>
+                    <div class="stat-value" id="totalCols">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Résultats filtrés</div>
+                    <div class="stat-value" id="displayedRows">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vue Tableau -->
+        <div id="tableView" class="view-container active">
+            <div class="table-view">
+                <div class="table-wrapper" id="tableWrapper">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Chargement des données...</p>
+                    </div>
+                </div>
+                <div class="pagination" id="tablePagination"></div>
+            </div>
+        </div>
+
+        <!-- Vue Fiche Métadonnées -->
+        <div id="metadataView" class="view-container">
+            <div class="metadata-navigation">
+                <span class="metadata-nav-info">Fiche <span id="metadataCurrentRecord">1</span> / <span id="metadataTotal">0</span></span>
+                <div class="metadata-nav-buttons">
+                    <button class="metadata-nav-btn" id="metadataPrevBtn" onclick="viewer.previousMetadata()">← Précédente</button>
+                    <button class="metadata-nav-btn" id="metadataNextBtn" onclick="viewer.nextMetadata()">Suivante →</button>
+                </div>
+                <!-- Éléments de contrôle pour le mode mise à jour / édition des valeurs -->
+                <div class="metadata-edit-toolbar" id="metadataEditToolbar">
+                    <button class="metadata-nav-btn btn-edit-mode" id="metadataEditToggleBtn" type="button" aria-label="Activer le mode édition">
+                        <span>✏️</span>
+                        <span>Modifier la fiche</span>
+                    </button>
+                    <div class="metadata-edit-actions" id="metadataEditActions" style="display: none;">
+                        <button class="metadata-nav-btn btn-save" id="metadataSaveBtn" type="button" aria-label="Enregistrer les modifications">
+                            <span>💾</span>
+                            <span>Enregistrer</span>
+                        </button>
+                        <button class="metadata-nav-btn btn-cancel" id="metadataCancelBtn" type="button" aria-label="Annuler l'édition">
+                            <span>✖</span>
+                            <span>Annuler</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bannière d'état du mode édition -->
+            <div id="metadataEditStatus" class="metadata-edit-status-banner" style="display: none;">
+                <span class="status-icon">ℹ️</span>
+                <span class="status-message" id="metadataEditStatusMessage">Mode édition actif : vous pouvez modifier les valeurs de la fiche puis enregistrer.</span>
+            </div>
+
+            <div id="metadataContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        class MetadataViewer {
+            constructor() {
+                this.activeTable = 'JDD_Formulaire';
+                this.currentView = 'table';
+                this.itemsPerPage = 10;
+                this.searchTerm = '';
+                this.userFilter = '';
+                this.isEditing = false;
+                this.adminToken = 'f319c72c20daba4e4bbdb3c3f8dfd19976c2e070a5b1919a';
+                this.nomenObjectifs = [];
+                this.nomenObjectifsMap = new Map();
+
+                // Configuration et stockage par volet
+                this.tables = {
+                    'JDD_Formulaire': {
+                        id: 'JDD_Formulaire',
+                        title: 'Visualiseur de Métadonnées — Jeux de Données',
+                        description: 'Consultation des fiches de jeux de données avec acteurs organisés par type',
+                        rowsLabel: 'Jeux de données',
+                        data: [],
+                        filteredData: [],
+                        currentPage: 1,
+                        metadataIndex: 0,
+                        sortField: null,
+                        sortOrder: 'asc',
+                        keyColumns: [
+                            'IdentifiantJeuDonnees',
+                            'Libelle',
+                            'BaseProduction',
+                            'Objectifs',
+                            'Territoires',
+                            'TypeDonnees'
+                        ]
+                    },
+                    'CA_Formulaire': {
+                        id: 'CA_Formulaire',
+                        title: 'Visualiseur de Métadonnées — Cadres d\'Acquisition',
+                        description: 'Consultation des fiches de cadres d\'acquisition (CA_Formulaire)',
+                        rowsLabel: 'Cadres d\'acquisition',
+                        data: [],
+                        filteredData: [],
+                        currentPage: 1,
+                        metadataIndex: 0,
+                        sortField: null,
+                        sortOrder: 'asc',
+                        keyColumns: [
+                            'IdentifiantCadreAcquisition',
+                            'LibelleCadreAcquisition',
+                            'StatutAvancement',
+                            'DateLancement',
+                            'DateCloture',
+                            'NiveauTerritorial',
+                            'Territoires'
+                        ]
+                    }
+                };
+
+                // Configuration des acteurs pour JDD_Formulaire
+                this.actorTypes = {
+                    'Contact Principal': {
+                        icon: '👤',
+                        fields: ['IdentiteContactPrincipal', 'OrganismeContactPrincipal', 'idOrganismeContactPrincipal', 'MailContactPrincipal']
+                    },
+                    'Fournisseur': {
+                        icon: '🏢',
+                        fields: ['IdentiteContactFournisseur', 'OrganismeContactFournisseur', 'idOrganismeContactFournisseur', 'MailContactFournisseur', 'IdentiteContactFournisseur2', 'OrganismeContactFournisseur2', 'idOrganismeContactFournisseur2', 'MailContactFournisseur2']
+                    },
+                    'Producteur': {
+                        icon: '⚙️',
+                        fields: ['IdentiteContactProducteur', 'OrganismeContactProducteur', 'idOrganismeContactProducteur', 'MailContactProducteur', 'IdentiteContactProducteur2', 'OrganismeContactProducteur2', 'idOrganismeContactProducteur2', 'MailContactProducteur2']
+                    },
+                    'Base Production': {
+                        icon: '🗄️',
+                        fields: ['IdentiteContactBaseProduction', 'OrganismeContactBaseProduction', 'idOrganismeContactBaseProduction', 'MailContactBaseProduction']
+                    }
+                };
+
+                // Dictionnaire des labels conviviaux
+                this.fieldLabels = {
+                    // JDD
+                    'Libelle': 'Libellé',
+                    'LibelleCourt': 'Libellé court',
+                    'IdentifiantJeuDonnees': 'Identifiant JDD',
+                    'Description': 'Description',
+                    'Objectifs': 'Objectifs',
+                    'MotsCles': 'Mots-clés',
+                    'RattachementCadreAcquisition': 'Rattachement Cadre d\'Acquisition',
+                    'Territoires': 'Territoires',
+                    'TypeDonnees': 'Type de données',
+                    'estContinental': 'Est continental',
+                    'estMarin': 'Est marin',
+                    'UUID': 'UUID',
+                    'URL': 'URL / Lien',
+                    'BaseProduction': 'Base de production',
+                    'LibelleProtocole': 'Libellé du protocole',
+                    'TypeProtocole': 'Type de protocole',
+                    'DescriptionProtocole': 'Description du protocole',
+                    'Doublon': 'Doublon',
+                    'Doublons': 'Doublons',
+                    'mailContact': 'Email de contact',
+                    'Intégré': 'Intégré',
+                    'integre': 'Intégré',
+                    'Integre': 'Intégré',
+                    'Créé le': 'Date de création',
+                    'Dernière mise à jour': 'Dernière mise à jour',
+
+                    // CA
+                    'IdentifiantCadreAcquisition': 'Identifiant Cadre d\'Acquisition',
+                    'LibelleCadreAcquisition': 'Libellé Cadre d\'Acquisition',
+                    'DescriptionCadreAcquisition': 'Description du Cadre',
+                    'DateLancement': 'Date de lancement',
+                    'DateCloture': 'Date de clôture',
+                    'StatutAvancement': 'Statut d\'avancement',
+                    'NiveauTerritorial': 'Niveau territorial',
+                    'PrecisionGeographique': 'Précision géographique',
+                    'DescriptionCibleTaxo': 'Description cible taxonomique',
+                    'NomFichierTaxonomique': 'Nom fichier taxonomique',
+                    'FichierJointOuiNon': 'Fichier joint',
+                    'IdentifiantProcedureDepot': 'Identifiant procédure de dépôt',
+                    'ReferenceMetacadre': 'Référence métacadre',
+                    'TypeFinancement': 'Type de financement',
+                    'VoletSINP': 'Volet SINP',
+                    'estMetaCadre': 'Est métacadre',
+
+                    // Acteurs
+                    'IdentiteContactPrincipal': 'Identité',
+                    'OrganismeContactPrincipal': 'Organisme',
+                    'idOrganismeContactPrincipal': 'ID Organisme',
+                    'MailContactPrincipal': 'Email',
+                    'IdentiteContactFournisseur': 'Identité',
+                    'OrganismeContactFournisseur': 'Organisme',
+                    'idOrganismeContactFournisseur': 'ID Organisme',
+                    'MailContactFournisseur': 'Email',
+                    'IdentiteContactFournisseur2': 'Identité (2)',
+                    'OrganismeContactFournisseur2': 'Organisme (2)',
+                    'idOrganismeContactFournisseur2': 'ID Organisme (2)',
+                    'MailContactFournisseur2': 'Email (2)',
+                    'IdentiteContactProducteur': 'Identité',
+                    'OrganismeContactProducteur': 'Organisme',
+                    'idOrganismeContactProducteur': 'ID Organisme',
+                    'MailContactProducteur': 'Email',
+                    'IdentiteContactProducteur2': 'Identité (2)',
+                    'OrganismeContactProducteur2': 'Organisme (2)',
+                    'idOrganismeContactProducteur2': 'ID Organisme (2)',
+                    'MailContactProducteur2': 'Email (2)',
+                    'IdentiteContactBaseProduction': 'Identité',
+                    'OrganismeContactBaseProduction': 'Organisme',
+                    'idOrganismeContactBaseProduction': 'ID Organisme',
+                    'MailContactBaseProduction': 'Email'
+                };
+
+                this.setupEventListeners();
+                this.initGrist();
+            }
+
+            getCurrentTableConfig() {
+                return this.tables[this.activeTable];
+            }
+
+            setupEventListeners() {
+                const userFilterInput = document.getElementById('userFilterInput');
+                if (userFilterInput) {
+                    userFilterInput.addEventListener('input', (e) => {
+                        this.userFilter = e.target.value;
+                        if (this.isEditing) {
+                            this.toggleEditMode(false);
+                        }
+                        this.filterAllTables();
+                    });
+                }
+
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        this.searchTerm = e.target.value.toLowerCase().trim();
+                        if (this.isEditing) {
+                            this.toggleEditMode(false);
+                        }
+                        this.filterData();
+                    });
+                }
+
+                // Écouteurs pour le mode édition
+                const editToggleBtn = document.getElementById('metadataEditToggleBtn');
+                if (editToggleBtn) {
+                    editToggleBtn.addEventListener('click', () => {
+                        this.toggleEditMode(true);
+                    });
+                }
+
+                const saveBtn = document.getElementById('metadataSaveBtn');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', () => {
+                        this.saveMetadata();
+                    });
+                }
+
+                const cancelBtn = document.getElementById('metadataCancelBtn');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        this.cancelEdit();
+                    });
+                }
+            }
+
+            toggleEditMode(editing) {
+                const tableConfig = this.getCurrentTableConfig();
+                const hasData = tableConfig && tableConfig.filteredData && tableConfig.filteredData.length > 0;
+
+                if (editing) {
+                    if (!hasData) {
+                        this.isEditing = false;
+                        this.updateEditUI();
+                        return;
+                    }
+
+                    if (!this.canEditCurrentRecord()) {
+                        this.isEditing = false;
+                        this.updateEditUI();
+                        this.setEditStatus('🔒 Vous ne disposez pas des droits nécessaires pour modifier cette fiche (email de contact non autorisé).', 'error');
+                        return;
+                    }
+                }
+
+                this.isEditing = Boolean(editing);
+                this.updateEditUI();
+                this.renderMetadataView();
+            }
+
+            isAdmin(filter) {
+                if (!filter) return false;
+                const clean = String(filter).trim().toLowerCase();
+                return clean === this.adminToken.toLowerCase();
+            }
+
+            canEditRecord(record) {
+                if (!record) return false;
+
+                const user = (this.userFilter || '').trim().toLowerCase();
+                if (!user) return false;
+
+                // Rôle administrateur avec token secret
+                if (this.isAdmin(user)) {
+                    return true;
+                }
+
+                // Vérification du champ mailContact principal
+                if (this.matchesMailContact(record, user)) {
+                    return true;
+                }
+
+                // Vérification de l'ensemble des champs d'acteurs / contacts
+                const contactFields = [
+                    'mailContact',
+                    'MailContactPrincipal',
+                    'MailContactFournisseur',
+                    'MailContactFournisseur2',
+                    'MailContactProducteur',
+                    'MailContactProducteur2',
+                    'MailContactBaseProduction'
+                ];
+
+                for (const field of contactFields) {
+                    if (record[field] !== undefined && record[field] !== null) {
+                        if (this.checkValueMatches(record[field], user)) {
+                            return true;
+                        }
+                    }
+                }
+
+                // Vérification générique sur tout champ contenant 'mail' ou 'contact'
+                for (const [key, val] of Object.entries(record)) {
+                    const lowerKey = key.toLowerCase();
+                    if ((lowerKey.includes('mail') || lowerKey.includes('contact')) && this.checkValueMatches(val, user)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            canEditCurrentRecord() {
+                const tableConfig = this.getCurrentTableConfig();
+                if (!tableConfig || !tableConfig.filteredData || tableConfig.filteredData.length === 0) {
+                    return false;
+                }
+                const currentRecord = tableConfig.filteredData[tableConfig.metadataIndex];
+                return this.canEditRecord(currentRecord);
+            }
+
+            getReadOnlyKeys() {
+                return ['id', 'UUID', 'Créé le', 'Dernière mise à jour', 'Intégré', 'integre', 'Integre', 'Doublon', 'Doublons'];
+            }
+
+            isReadOnlyField(key) {
+                return this.getReadOnlyKeys().includes(key);
+            }
+
+            hasUnsavedChanges() {
+                if (!this.isEditing) return false;
+                const tableConfig = this.getCurrentTableConfig();
+                if (!tableConfig || !tableConfig.filteredData || tableConfig.filteredData.length === 0) return false;
+                const currentRecord = tableConfig.filteredData[tableConfig.metadataIndex];
+                if (!currentRecord) return false;
+
+                const formData = this.getFormData();
+                const readOnlyKeys = this.getReadOnlyKeys();
+
+                for (const [key, val] of Object.entries(formData)) {
+                    if (readOnlyKeys.includes(key)) continue;
+                    const origVal = currentRecord[key];
+                    const origStr = (origVal !== null && origVal !== undefined) ? String(origVal).trim() : '';
+                    const formStr = (val !== null && val !== undefined) ? String(val).trim() : '';
+                    if (origStr !== formStr) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            cancelEdit() {
+                if (this.hasUnsavedChanges()) {
+                    const confirmed = window.confirm('Vous avez des modifications non enregistrées. Voulez-vous vraiment annuler ?');
+                    if (!confirmed) {
+                        return;
+                    }
+                }
+                this.clearValidationErrors();
+                this.toggleEditMode(false);
+                this.setEditStatus(null);
+            }
+
+            validateForm() {
+                this.clearValidationErrors();
+                const container = document.getElementById('metadataContainer');
+                if (!container) return { isValid: true, errors: [] };
+
+                const inputs = container.querySelectorAll('[data-field]');
+                const errors = [];
+                let firstInvalidInput = null;
+
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
+                const dateRegex = /^\d{4}(-\d{2}(-\d{2})?)?$/; // Support AAAA, AAAA-MM ou AAAA-MM-JJ
+
+                const emailFields = [
+                    'mailContact', 'MailContactPrincipal', 'MailContactFournisseur',
+                    'MailContactFournisseur2', 'MailContactProducteur', 'MailContactProducteur2',
+                    'MailContactBaseProduction'
+                ];
+                const dateFields = ['DateLancement', 'DateCloture'];
+                const requiredFields = this.activeTable === 'CA_Formulaire'
+                    ? ['LibelleCadreAcquisition']
+                    : ['Libelle'];
+
+                inputs.forEach(input => {
+                    const fieldName = input.getAttribute('data-field');
+                    if (!fieldName || input.disabled || input.readOnly) return;
+
+                    const val = input.value.trim();
+                    let fieldError = null;
+
+                    // Validation champs obligatoires
+                    if (requiredFields.includes(fieldName) && !val) {
+                        fieldError = 'Ce champ est obligatoire.';
+                    }
+                    // Validation email
+                    else if (emailFields.includes(fieldName) && val) {
+                        if (!emailRegex.test(val)) {
+                            fieldError = 'Format d\'adresse email invalide (ex: contact@domaine.fr).';
+                        }
+                    }
+                    // Validation URL
+                    else if (fieldName === 'URL' && val) {
+                        if (!val.startsWith('http://') && !val.startsWith('https://')) {
+                            fieldError = 'L\'adresse URL doit commencer par http:// ou https://';
+                        } else if (!urlRegex.test(val)) {
+                            fieldError = 'Format d\'URL invalide.';
+                        }
+                    }
+                    // Validation Date
+                    else if (dateFields.includes(fieldName) && val) {
+                        if (!dateRegex.test(val)) {
+                            fieldError = 'Format de date attendu : AAAA-MM-JJ ou AAAA.';
+                        }
+                    }
+
+                    if (fieldError) {
+                        errors.push({ field: fieldName, message: fieldError, element: input });
+                        this.showFieldError(input, fieldError);
+                        if (!firstInvalidInput) {
+                            firstInvalidInput = input;
+                        }
+                    }
+                });
+
+                if (firstInvalidInput) {
+                    firstInvalidInput.focus();
+                    firstInvalidInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                return {
+                    isValid: errors.length === 0,
+                    errors: errors
+                };
+            }
+
+            showFieldError(inputElement, errorMessage) {
+                inputElement.classList.add('is-invalid');
+                const parent = inputElement.closest('.metadata-field-value') || inputElement.parentElement;
+                if (parent) {
+                    const existingError = parent.querySelector('.form-field-error');
+                    if (!existingError) {
+                        const errDiv = document.createElement('div');
+                        errDiv.className = 'form-field-error';
+                        errDiv.textContent = `⚠️ ${errorMessage}`;
+                        parent.appendChild(errDiv);
+                    }
+                }
+            }
+
+            clearValidationErrors() {
+                const container = document.getElementById('metadataContainer');
+                if (!container) return;
+
+                container.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                container.querySelectorAll('.form-field-error').forEach(el => el.remove());
+            }
+
+            async saveMetadata() {
+                const tableConfig = this.getCurrentTableConfig();
+                if (!tableConfig || !tableConfig.filteredData || tableConfig.filteredData.length === 0) {
+                    this.setEditStatus('Aucune donnée à enregistrer.', 'error');
+                    return;
+                }
+
+                const currentRecord = tableConfig.filteredData[tableConfig.metadataIndex];
+                if (!currentRecord) {
+                    this.setEditStatus('Fiche introuvable.', 'error');
+                    return;
+                }
+
+                // Vérification des droits d'édition par utilisateur
+                if (!this.canEditCurrentRecord()) {
+                    this.setEditStatus('❌ Action non autorisée : vous ne disposez pas des droits de modification sur cette fiche.', 'error');
+                    return;
+                }
+
+                // 1. Validation du formulaire avant soumission
+                const validation = this.validateForm();
+                if (!validation.isValid) {
+                    const errorCount = validation.errors.length;
+                    const errorMsg = errorCount === 1
+                        ? `Veuillez corriger le champ invalide (${validation.errors[0].message})`
+                        : `${errorCount} champs contiennent des erreurs de saisie.`;
+                    this.setEditStatus(`⚠️ ${errorMsg}`, 'error');
+                    return;
+                }
+
+                const saveBtn = document.getElementById('metadataSaveBtn');
+                const cancelBtn = document.getElementById('metadataCancelBtn');
+                if (saveBtn) saveBtn.disabled = true;
+                if (cancelBtn) cancelBtn.disabled = true;
+
+                this.setEditStatus('⏳ Enregistrement en cours...', 'info');
+
+                try {
+                    const formData = this.getFormData();
+                    const readOnlyKeys = this.getReadOnlyKeys();
+                    const fieldsToUpdate = {};
+
+                    for (const [key, value] of Object.entries(formData)) {
+                        if (!readOnlyKeys.includes(key)) {
+                            fieldsToUpdate[key] = value;
+                        }
+                    }
+
+                    let gristSaved = false;
+
+                    // Sauvegarde via l'API Grist si disponible
+                    if (typeof grist !== 'undefined' && currentRecord.id) {
+                        try {
+                            if (grist.docApi && typeof grist.docApi.applyUserActions === 'function') {
+                                await grist.docApi.applyUserActions([
+                                    ['UpdateRecord', this.activeTable, currentRecord.id, fieldsToUpdate]
+                                ]);
+                                gristSaved = true;
+                            } else if (grist.selectedTable && typeof grist.selectedTable.updateRecords === 'function') {
+                                await grist.selectedTable.updateRecords([
+                                    { id: currentRecord.id, fields: fieldsToUpdate }
+                                ]);
+                                gristSaved = true;
+                            }
+                        } catch (err) {
+                            console.error('Erreur lors de l\'enregistrement dans Grist:', err);
+                            throw new Error(err.message || 'Échec de la communication avec Grist');
+                        }
+                    }
+
+                    // Mise à jour des données locales en mémoire
+                    Object.assign(currentRecord, fieldsToUpdate);
+
+                    const sourceIndex = tableConfig.data.findIndex(r => (r.id && r.id === currentRecord.id) || (r === currentRecord));
+                    if (sourceIndex !== -1) {
+                        Object.assign(tableConfig.data[sourceIndex], fieldsToUpdate);
+                    }
+
+                    // Sortie du mode édition et rafraîchissement des vues
+                    this.clearValidationErrors();
+                    this.isEditing = false;
+                    this.updateEditUI();
+                    this.renderMetadataView();
+                    this.renderTableView();
+                    this.updateStats();
+
+                    const successMessage = gristSaved
+                        ? '✅ Fiche enregistrée et synchronisée avec succès dans Grist.'
+                        : '✅ Modifications enregistrées localement avec succès.';
+                    this.setEditStatus(successMessage, 'success');
+
+                    setTimeout(() => {
+                        if (!this.isEditing) {
+                            this.setEditStatus(null);
+                        }
+                    }, 4000);
+
+                } catch (error) {
+                    console.error('Erreur lors de l\'enregistrement :', error);
+                    this.setEditStatus(`❌ Erreur lors de l'enregistrement : ${error.message || error}`, 'error');
+                } finally {
+                    if (saveBtn) saveBtn.disabled = false;
+                    if (cancelBtn) cancelBtn.disabled = false;
+                }
+            }
+
+            setEditStatus(message, type = 'info') {
+                const statusBanner = document.getElementById('metadataEditStatus');
+                const statusMessage = document.getElementById('metadataEditStatusMessage');
+                if (!statusBanner || !statusMessage) return;
+
+                statusBanner.classList.remove('error', 'success');
+
+                if (!message) {
+                    if (this.isEditing) {
+                        statusBanner.style.display = 'flex';
+                        statusMessage.textContent = 'Mode édition actif : vous pouvez modifier les valeurs de la fiche puis enregistrer.';
+                    } else {
+                        statusBanner.style.display = 'none';
+                    }
+                    return;
+                }
+
+                if (type === 'error') {
+                    statusBanner.classList.add('error');
+                } else if (type === 'success') {
+                    statusBanner.classList.add('success');
+                }
+
+                statusBanner.style.display = 'flex';
+                statusMessage.textContent = message;
+            }
+
+            updateEditUI() {
+                const editToggleBtn = document.getElementById('metadataEditToggleBtn');
+                const editActions = document.getElementById('metadataEditActions');
+                const prevBtn = document.getElementById('metadataPrevBtn');
+                const nextBtn = document.getElementById('metadataNextBtn');
+                const tableConfig = this.getCurrentTableConfig();
+                const hasData = tableConfig && tableConfig.filteredData && tableConfig.filteredData.length > 0;
+                const canEdit = this.canEditCurrentRecord();
+
+                if (editToggleBtn) {
+                    editToggleBtn.style.display = this.isEditing ? 'none' : 'inline-flex';
+                    if (!hasData) {
+                        editToggleBtn.disabled = true;
+                        editToggleBtn.title = 'Aucune fiche affichée';
+                        editToggleBtn.innerHTML = '<span>✏️</span><span>Modifier la fiche</span>';
+                    } else if (!canEdit) {
+                        editToggleBtn.disabled = true;
+                        editToggleBtn.title = 'Modification restreinte : votre adresse email ne correspond à aucun contact autorisé sur cette fiche';
+                        editToggleBtn.innerHTML = '<span>🔒</span><span>Modification restreinte</span>';
+                    } else {
+                        editToggleBtn.disabled = false;
+                        editToggleBtn.title = 'Modifier les informations de cette fiche';
+                        editToggleBtn.innerHTML = '<span>✏️</span><span>Modifier la fiche</span>';
+                    }
+                }
+
+                if (editActions) {
+                    editActions.style.display = this.isEditing ? 'inline-flex' : 'none';
+                }
+
+                if (prevBtn) {
+                    prevBtn.disabled = this.isEditing || !hasData || tableConfig.metadataIndex === 0;
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = this.isEditing || !hasData || tableConfig.metadataIndex >= tableConfig.filteredData.length - 1;
+                }
+
+                this.setEditStatus(null);
+            }
+
+            initGrist() {
+                console.log('🔄 Initialisation de l\'API Grist...');
+
+                if (typeof grist !== 'undefined') {
+                    try {
+                        grist.ready({
+                            requiredAccess: 'full'
+                        });
+
+                        // Écoute des enregistrements Grist du widget
+                        grist.onRecords((records) => {
+                            if (records && records.length > 0) {
+                                console.log('✅ Données reçues de Grist:', records.length, 'enregistrements');
+                                const detectedType = this.detectTableType(records[0]);
+                                if (detectedType === 'Nomen_objectif_jdd') {
+                                    this.setNomenclatureObjectifs(records);
+                                    this.filterAllTables(true);
+                                } else {
+                                    this.setTableData(detectedType, records);
+                                }
+                            }
+                        });
+
+                        // Écoute de la sélection pour synchroniser la fiche
+                        grist.onRecord((record) => {
+                            if (record) {
+                                this.handleGristRecordSelect(record);
+                            }
+                        });
+
+                        // Si docApi est disponible, charger les tables et la nomenclature Nomen_objectif_jdd
+                        this.fetchTablesFromGrist();
+
+                    } catch (e) {
+                        console.warn('⚠️ Grist ready warning:', e);
+                    }
+                } else {
+                    console.log('ℹ️ Grist non détecté.');
+                }
+            }
+
+            async fetchTablesFromGrist() {
+                if (typeof grist === 'undefined' || !grist.docApi) return;
+
+                // Charger la table de nomenclature des objectifs JDD (Nomen_objectif_jdd)
+                try {
+                    const nomenRaw = await grist.docApi.fetchTable('Nomen_objectif_jdd');
+                    if (nomenRaw && nomenRaw.id && nomenRaw.id.length > 0) {
+                        const records = this.gristTableToRecords(nomenRaw);
+                        this.setNomenclatureObjectifs(records);
+                        console.log('✅ Nomenclature Nomen_objectif_jdd chargée depuis Grist:', this.nomenObjectifs.length, 'entrées');
+                        this.filterAllTables(true);
+                    }
+                } catch (err) {
+                    console.log('fetchTable Nomen_objectif_jdd non disponible ou sans données:', err);
+                }
+
+                try {
+                    const jddRaw = await grist.docApi.fetchTable('JDD_Formulaire');
+                    if (jddRaw && jddRaw.id && jddRaw.id.length > 0) {
+                        this.setTableData('JDD_Formulaire', this.gristTableToRecords(jddRaw));
+                    }
+                } catch (err) {
+                    console.log('fetchTable JDD_Formulaire non disponible ou sans données:', err);
+                }
+
+                try {
+                    const caRaw = await grist.docApi.fetchTable('CA_Formulaire');
+                    if (caRaw && caRaw.id && caRaw.id.length > 0) {
+                        this.setTableData('CA_Formulaire', this.gristTableToRecords(caRaw));
+                    }
+                } catch (err) {
+                    console.log('fetchTable CA_Formulaire non disponible ou sans données:', err);
+                }
+            }
+
+            setNomenclatureObjectifs(records) {
+                if (!Array.isArray(records) || records.length === 0) return;
+                this.nomenObjectifs = records;
+                if (!this.nomenObjectifsMap) {
+                    this.nomenObjectifsMap = new Map();
+                }
+
+                records.forEach(rec => {
+                    const label = rec.lb_objectif_jdd || rec.lb_nom || rec.label || rec.Libelle || rec.libelle || rec.lb_court || rec.valeur || rec.nom;
+                    if (!label) return;
+
+                    const labelStr = String(label).trim();
+
+                    if (rec.id !== undefined && rec.id !== null) {
+                        this.nomenObjectifsMap.set(String(rec.id).trim().toLowerCase(), labelStr);
+                    }
+                    if (rec.cd_objectif_jdd !== undefined && rec.cd_objectif_jdd !== null) {
+                        this.nomenObjectifsMap.set(String(rec.cd_objectif_jdd).trim().toLowerCase(), labelStr);
+                    }
+                    if (rec.code !== undefined && rec.code !== null) {
+                        this.nomenObjectifsMap.set(String(rec.code).trim().toLowerCase(), labelStr);
+                    }
+                    if (rec.cd_nomenclature !== undefined && rec.cd_nomenclature !== null) {
+                        this.nomenObjectifsMap.set(String(rec.cd_nomenclature).trim().toLowerCase(), labelStr);
+                    }
+                    this.nomenObjectifsMap.set(labelStr.toLowerCase(), labelStr);
+                });
+            }
+
+            findObjectifLabel(token) {
+                if (token === null || token === undefined) return '';
+                if (typeof token === 'object') {
+                    const candidate = token.lb_objectif_jdd || token.lb_nom || token.label || token.Libelle || token.libelle || token.name || token.valeur;
+                    if (candidate) return String(candidate).trim();
+                    if (token.id !== undefined && token.id !== null) token = token.id;
+                    else return '';
+                }
+
+                let str = String(token).trim();
+                // Nettoyer les guillemets et crochets résiduels autour du token
+                str = str.replace(/^[\[\]'"`]+|[\[\]'"`]+$/g, '').trim();
+                if (!str || str.toUpperCase() === 'L') return '';
+
+                const lower = str.toLowerCase();
+                if (this.nomenObjectifsMap && this.nomenObjectifsMap.has(lower)) {
+                    return this.nomenObjectifsMap.get(lower);
+                }
+
+                if (/^\d+$/.test(str) && this.nomenObjectifsMap && this.nomenObjectifsMap.has(str)) {
+                    return this.nomenObjectifsMap.get(str);
+                }
+
+                return str;
+            }
+
+            formatObjectifsValue(value) {
+                if (value === null || value === undefined || value === '') {
+                    return '';
+                }
+
+                // Grist RefList sous forme de tableau JS (ex: ['L', 1, 3, 5] ou [1, 3, 5])
+                if (Array.isArray(value)) {
+                    const labels = value
+                        .map(item => this.findObjectifLabel(item))
+                        .filter(Boolean);
+                    return labels.join(', ');
+                }
+
+                let strVal = String(value).trim();
+                if (!strVal) return '';
+
+                // Si c'est une chaîne JSON / Python représentant une liste : "['L', 1, 3, 5]" ou "[1, 3, 5]"
+                if ((strVal.startsWith('[') && strVal.endsWith(']')) || (strVal.startsWith('(') && strVal.endsWith(')'))) {
+                    strVal = strVal.slice(1, -1).trim();
+                }
+
+                // Si commence par L: ou L, en début de chaîne (ex: "L,1,3,5")
+                if (/^L\s*[:,]\s*/i.test(strVal)) {
+                    strVal = strVal.replace(/^L\s*[:,]\s*/i, '');
+                }
+
+                // Séparateurs éventuels (virgule, point-virgule, saut de ligne)
+                if (strVal.includes(',') || strVal.includes(';') || strVal.includes('\n')) {
+                    const parts = strVal.split(/[,;\n]+/).map(p => p.trim()).filter(Boolean);
+                    const mapped = parts.map(p => this.findObjectifLabel(p)).filter(Boolean);
+                    return mapped.join(', ');
+                }
+
+                return this.findObjectifLabel(strVal);
+            }
+
+            gristTableToRecords(tableData) {
+                if (!tableData || !tableData.id) return [];
+                const keys = Object.keys(tableData);
+                const count = tableData.id.length;
+                const records = [];
+                for (let i = 0; i < count; i++) {
+                    const record = {};
+                    for (const k of keys) {
+                        record[k] = tableData[k][i];
+                    }
+                    records.push(record);
+                }
+                return records;
+            }
+
+            detectTableType(record) {
+                if (!record) return this.activeTable;
+                if ('lb_objectif_jdd' in record || 'cd_objectif_jdd' in record) {
+                    return 'Nomen_objectif_jdd';
+                }
+                if ('IdentifiantCadreAcquisition' in record || 'LibelleCadreAcquisition' in record || 'StatutAvancement' in record) {
+                    return 'CA_Formulaire';
+                }
+                if ('IdentifiantJeuDonnees' in record || 'Libelle' in record || 'BaseProduction' in record || 'IdentiteContactPrincipal' in record) {
+                    return 'JDD_Formulaire';
+                }
+                return this.activeTable;
+            }
+
+            handleGristRecordSelect(record) {
+                const detectedType = this.detectTableType(record);
+                const tableConfig = this.tables[detectedType];
+                if (!tableConfig || tableConfig.filteredData.length === 0) return;
+
+                // Trouver l'indice de l'enregistrement sélectionné
+                const idField = detectedType === 'CA_Formulaire' ? 'IdentifiantCadreAcquisition' : 'IdentifiantJeuDonnees';
+                const recId = record[idField] || record.id;
+
+                const index = tableConfig.filteredData.findIndex(r => (r[idField] === recId || r.id === recId));
+                if (index !== -1) {
+                    tableConfig.metadataIndex = index;
+                    if (this.activeTable === detectedType && this.currentView === 'metadata') {
+                        this.renderMetadataView();
+                    }
+                }
+            }
+
+            setTableData(tableName, data) {
+                if (!this.tables[tableName]) return;
+                this.tables[tableName].data = Array.isArray(data) ? data : [];
+                this.filterAllTables(false);
+                this.updateStats();
+                this.render();
+            }
+
+            updateTabBadges() {
+                const badgeJDD = document.getElementById('tabBadgeJDD');
+                const badgeCA = document.getElementById('tabBadgeCA');
+                if (badgeJDD) badgeJDD.textContent = this.tables['JDD_Formulaire'].filteredData.length;
+                if (badgeCA) badgeCA.textContent = this.tables['CA_Formulaire'].filteredData.length;
+            }
+
+            switchTable(tableName) {
+                if (!this.tables[tableName]) return;
+                if (this.isEditing) {
+                    this.isEditing = false;
+                }
+                this.activeTable = tableName;
+
+                const tableConfig = this.getCurrentTableConfig();
+
+                // Mise à jour des boutons d'onglets
+                document.querySelectorAll('.table-tab-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.table === tableName);
+                });
+
+                // Mise à jour du header
+                document.getElementById('headerTitle').textContent = tableConfig.title;
+                document.getElementById('headerDescription').textContent = tableConfig.description;
+                document.getElementById('statRowsLabel').textContent = tableConfig.rowsLabel;
+
+                // Conserver la vue active (table ou metadata) et réafficher
+                this.updateStats();
+                this.render();
+            }
+
+            filterData(shouldRender = true) {
+                this.filterAllTables(shouldRender);
+            }
+
+            filterAllTables(shouldRender = true) {
+                Object.keys(this.tables).forEach(tableName => {
+                    this.filterTableData(tableName);
+                });
+                this.updateStats();
+                if (shouldRender) {
+                    this.render();
+                }
+            }
+
+            filterTableData(tableName) {
+                const tableConfig = this.tables[tableName];
+                if (!tableConfig) return;
+                const allData = tableConfig.data;
+                const userFilter = this.userFilter.trim().toLowerCase();
+
+                // Si le filtre d'accès utilisateur (mailContact) est vide, le résultat est vide
+                if (!userFilter) {
+                    tableConfig.filteredData = [];
+                } else {
+                    tableConfig.filteredData = allData.filter(item => {
+                        const matchesUser = this.matchesMailContact(item, userFilter);
+                        if (!matchesUser) return false;
+
+                        if (this.searchTerm) {
+                            return Object.entries(item).some(([key, value]) => {
+                                if (value === null || value === undefined) return false;
+                                if (key === 'Objectifs' && tableName === 'JDD_Formulaire') {
+                                    const resolved = this.formatObjectifsValue(value);
+                                    if (resolved && resolved.toLowerCase().includes(this.searchTerm)) return true;
+                                }
+                                return String(value).toLowerCase().includes(this.searchTerm);
+                            });
+                        }
+                        return true;
+                    });
+                }
+
+                tableConfig.currentPage = 1;
+                tableConfig.metadataIndex = 0;
+            }
+
+            matchesMailContact(record, filter) {
+                if (!filter || !record) return false;
+
+                // Accès administrateur avec token secret
+                if (this.isAdmin(filter)) {
+                    return true;
+                }
+
+                let contactVal = undefined;
+                if (record.mailContact !== undefined && record.mailContact !== null) {
+                    contactVal = record.mailContact;
+                } else {
+                    const key = Object.keys(record).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'mailcontact');
+                    if (key) {
+                        contactVal = record[key];
+                    }
+                }
+
+                if (contactVal === undefined || contactVal === null) {
+                    return false;
+                }
+
+                return this.checkValueMatches(contactVal, filter);
+            }
+
+            checkValueMatches(value, filter) {
+                if (value === null || value === undefined) return false;
+                if (Array.isArray(value)) {
+                    return value.some(v => this.checkValueMatches(v, filter));
+                }
+                const strVal = String(value).trim().toLowerCase();
+                if (!strVal) return false;
+
+                // Cas d'un accès administrateur avec token secret
+                if (this.isAdmin(filter)) {
+                    return true;
+                }
+
+                // Si le champ contient plusieurs adresses (ex: séparées par virgule, point-virgule ou espace)
+                if (strVal.includes(',') || strVal.includes(';') || strVal.includes(' ')) {
+                    const parts = strVal.split(/[,;\s]+/).map(p => p.trim()).filter(Boolean);
+                    return parts.some(part => part === filter);
+                }
+
+                // Correspondance strictement égale
+                return strVal === filter;
+            }
+
+            updateStats() {
+                const tableConfig = this.getCurrentTableConfig();
+                const totalRows = tableConfig.data.length;
+                const sampleRecord = tableConfig.data[0];
+                const totalCols = sampleRecord ? Object.keys(sampleRecord).length : 0;
+                const displayedRows = tableConfig.filteredData.length;
+
+                document.getElementById('totalRows').textContent = totalRows;
+                document.getElementById('totalCols').textContent = totalCols;
+                document.getElementById('displayedRows').textContent = displayedRows;
+                this.updateTabBadges();
+            }
+
+            switchView(view) {
+                if (this.isEditing) {
+                    this.isEditing = false;
+                }
+                this.currentView = view;
+                const tableConfig = this.getCurrentTableConfig();
+                tableConfig.currentPage = 1;
+
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.view === view);
+                });
+
+                document.querySelectorAll('.view-container').forEach(container => {
+                    container.classList.remove('active');
+                });
+                document.getElementById(view + 'View').classList.add('active');
+
+                this.render();
+            }
+
+            getPaginatedData() {
+                const tableConfig = this.getCurrentTableConfig();
+                const start = (tableConfig.currentPage - 1) * this.itemsPerPage;
+                const end = start + this.itemsPerPage;
+                return tableConfig.filteredData.slice(start, end);
+            }
+
+            getTotalPages() {
+                const tableConfig = this.getCurrentTableConfig();
+                return Math.max(1, Math.ceil(tableConfig.filteredData.length / this.itemsPerPage));
+            }
+
+            render() {
+                if (this.currentView === 'table') {
+                    this.renderTableView();
+                } else if (this.currentView === 'metadata') {
+                    this.renderMetadataView();
+                }
+            }
+
+            renderTableView() {
+                const tableConfig = this.getCurrentTableConfig();
+                const data = this.getPaginatedData();
+                const wrapper = document.getElementById('tableWrapper');
+
+                if (tableConfig.filteredData.length === 0) {
+                    const isUserFilterEmpty = !this.userFilter.trim();
+                    const emptyIcon = isUserFilterEmpty ? '🔒' : '📭';
+                    const emptyTitle = isUserFilterEmpty
+                        ? 'Accès restreint aux métadonnées'
+                        : `Aucune donnée pour "${this.activeTable}"`;
+                    const emptyDesc = isUserFilterEmpty
+                        ? 'Veuillez saisir votre adresse email (mailContact) ou votre token d\'accès ci-dessus pour consulter les fiches.'
+                        : (this.searchTerm ? 'Modifiez votre recherche ou vérifiez l\'email de contact.' : 'Aucun enregistrement trouvé pour cet utilisateur dans ce volet.');
+
+                    wrapper.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">${emptyIcon}</div>
+                            <h3>${emptyTitle}</h3>
+                            <p>${emptyDesc}</p>
+                        </div>
+                    `;
+                    document.getElementById('tablePagination').innerHTML = '';
+                    return;
+                }
+
+                // Déterminer les colonnes à afficher
+                let columns = [];
+                if (tableConfig.keyColumns && tableConfig.keyColumns.length > 0) {
+                    columns = tableConfig.keyColumns.filter(col => {
+                        return tableConfig.data.some(row => row[col] !== undefined);
+                    });
+                }
+
+                if (columns.length === 0 && data.length > 0) {
+                    columns = Object.keys(data[0]).filter(k => k !== 'id').slice(0, 6);
+                }
+
+                let html = '<table><thead><tr>';
+
+                columns.forEach(header => {
+                    const sortIcon = tableConfig.sortField === header
+                        ? (tableConfig.sortOrder === 'asc' ? ' ▲' : ' ▼')
+                        : '';
+                    const label = this.formatFieldLabel(header);
+                    html += `<th onclick="viewer.sortBy('${header}')" title="Trier par ${label}">
+                        ${label}
+                        <span class="sort-icon">${sortIcon}</span>
+                    </th>`;
+                });
+
+                html += '<th style="text-align: center;">Action</th>';
+                html += '</tr></thead><tbody>';
+
+                data.forEach((row, idx) => {
+                    const globalIdx = (tableConfig.currentPage - 1) * this.itemsPerPage + idx;
+                    html += `<tr onclick="viewer.openRecordInFiche(${globalIdx})">`;
+                    columns.forEach(field => {
+                        const rawValue = row[field];
+                        const displayValue = this.formatCellValue(field, rawValue);
+                        html += `<td title="${String(rawValue || '').replace(/"/g, '&quot;')}">${displayValue}</td>`;
+                    });
+                    html += `<td style="text-align: center;" onclick="event.stopPropagation();">
+                        <button class="table-action-btn" onclick="viewer.openRecordInFiche(${globalIdx})">📄 Voir fiche</button>
+                    </td>`;
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                wrapper.innerHTML = html;
+
+                this.renderPagination('table');
+            }
+
+            openRecordInFiche(index) {
+                if (this.isEditing) {
+                    this.isEditing = false;
+                }
+                const tableConfig = this.getCurrentTableConfig();
+                tableConfig.metadataIndex = index;
+                this.switchView('metadata');
+            }
+
+            renderMetadataView() {
+                const tableConfig = this.getCurrentTableConfig();
+                const data = tableConfig.filteredData;
+                const container = document.getElementById('metadataContainer');
+
+                if (data.length === 0) {
+                    if (this.isEditing) {
+                        this.isEditing = false;
+                    }
+                    const isUserFilterEmpty = !this.userFilter.trim();
+                    const emptyIcon = isUserFilterEmpty ? '🔒' : '📭';
+                    const emptyTitle = isUserFilterEmpty
+                        ? 'Accès restreint aux métadonnées'
+                        : `Aucune donnée pour "${this.activeTable}"`;
+                    const emptyDesc = isUserFilterEmpty
+                        ? 'Veuillez saisir votre adresse email (mailContact) ou votre token d\'accès ci-dessus pour consulter les fiches.'
+                        : (this.searchTerm ? 'Modifiez votre recherche ou vérifiez l\'email de contact.' : 'Aucun enregistrement trouvé pour cet utilisateur dans ce volet.');
+
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">${emptyIcon}</div>
+                            <h3>${emptyTitle}</h3>
+                            <p>${emptyDesc}</p>
+                        </div>
+                    `;
+                    document.getElementById('metadataCurrentRecord').textContent = '0';
+                    document.getElementById('metadataTotal').textContent = '0';
+                    document.getElementById('metadataPrevBtn').disabled = true;
+                    document.getElementById('metadataNextBtn').disabled = true;
+                    this.updateEditUI();
+                    return;
+                }
+
+                if (tableConfig.metadataIndex >= data.length) {
+                    tableConfig.metadataIndex = 0;
+                }
+
+                const record = data[tableConfig.metadataIndex];
+                document.getElementById('metadataCurrentRecord').textContent = tableConfig.metadataIndex + 1;
+                document.getElementById('metadataTotal').textContent = data.length;
+
+                document.getElementById('metadataPrevBtn').disabled = tableConfig.metadataIndex === 0;
+                document.getElementById('metadataNextBtn').disabled = tableConfig.metadataIndex === data.length - 1;
+
+                this.updateEditUI();
+
+                if (this.activeTable === 'CA_Formulaire') {
+                    container.innerHTML = this.renderCAMetadataCard(record);
+                } else {
+                    container.innerHTML = this.renderJDDMetadataCard(record);
+                }
+            }
+
+            renderFormField(key, value) {
+                const readOnlyKeys = this.getReadOnlyKeys();
+                const booleanKeys = ['estContinental', 'estMarin', 'estMetaCadre', 'FichierJointOuiNon'];
+                const textareaKeys = [
+                    'Description', 'Objectifs', 'MotsCles', 'DescriptionProtocole',
+                    'DescriptionCadreAcquisition', 'PrecisionGeographique', 'DescriptionCibleTaxo'
+                ];
+                const emailKeys = [
+                    'mailContact', 'MailContactPrincipal', 'MailContactFournisseur',
+                    'MailContactFournisseur2', 'MailContactProducteur', 'MailContactProducteur2',
+                    'MailContactBaseProduction'
+                ];
+                const urlKeys = ['URL'];
+                const dateKeys = ['DateLancement', 'DateCloture'];
+
+                const valStr = value !== null && value !== undefined ? String(value) : '';
+
+                if (readOnlyKeys.includes(key)) {
+                    return `<input type="text" class="form-control-input" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" value="${this.escapeHtml(valStr)}" readonly disabled style="background: #f5f5f5; color: #777; cursor: not-allowed;" title="Champ système ou calculé en lecture seule">`;
+                }
+
+                if (booleanKeys.includes(key)) {
+                    const isTrue = value === true || valStr.toLowerCase() === 'true' || valStr.toLowerCase() === 'oui' || valStr === '1';
+                    const isFalse = value === false || valStr.toLowerCase() === 'false' || valStr.toLowerCase() === 'non' || valStr === '0';
+                    return `<select class="form-control-select" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}">
+                        <option value="" ${!isTrue && !isFalse ? 'selected' : ''}>— Non renseigné —</option>
+                        <option value="true" ${isTrue ? 'selected' : ''}>Oui</option>
+                        <option value="false" ${isFalse ? 'selected' : ''}>Non</option>
+                    </select>`;
+                }
+
+                if (key === 'Objectifs' && this.activeTable === 'JDD_Formulaire') {
+                    const displayVal = this.formatObjectifsValue(value) || valStr;
+                    return `<textarea class="form-control-textarea" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" rows="3" placeholder="Saisir ${this.escapeHtml(this.formatFieldLabel(key))}...">${this.escapeHtml(displayVal)}</textarea>`;
+                }
+
+                if (textareaKeys.includes(key)) {
+                    return `<textarea class="form-control-textarea" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" rows="3" placeholder="Saisir ${this.escapeHtml(this.formatFieldLabel(key))}...">${this.escapeHtml(valStr)}</textarea>`;
+                }
+
+                if (emailKeys.includes(key)) {
+                    return `<input type="email" class="form-control-input" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" value="${this.escapeHtml(valStr)}" placeholder="adresse@domaine.fr">`;
+                }
+
+                if (urlKeys.includes(key)) {
+                    return `<input type="url" class="form-control-input" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" value="${this.escapeHtml(valStr)}" placeholder="https://...">`;
+                }
+
+                if (dateKeys.includes(key)) {
+                    return `<input type="text" class="form-control-input" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" value="${this.escapeHtml(valStr)}" placeholder="AAAA-MM-JJ">`;
+                }
+
+                return `<input type="text" class="form-control-input" data-field="${this.escapeHtml(key)}" name="${this.escapeHtml(key)}" value="${this.escapeHtml(valStr)}" placeholder="Saisir ${this.escapeHtml(this.formatFieldLabel(key))}...">`;
+            }
+
+            renderFieldBlock(key, value, isFullWidth = false) {
+                const isReadOnly = this.isReadOnlyField(key);
+
+                if (this.isEditing) {
+                    return `<div class="metadata-field editing ${isFullWidth ? 'full-width' : ''}">
+                        <div class="metadata-field-label">
+                            ${this.escapeHtml(this.formatFieldLabel(key))}
+                            ${isReadOnly ? '<span style="font-size: 10px; color: #888; margin-left: 4px; text-transform: none;">🔒 (lecture seule)</span>' : ''}
+                        </div>
+                        <div class="metadata-field-value">${this.renderFormField(key, value)}</div>
+                    </div>`;
+                }
+
+                if (value === undefined || value === null || String(value).trim() === '') {
+                    return '';
+                }
+
+                return `<div class="metadata-field ${isFullWidth ? 'full-width' : ''}">
+                    <div class="metadata-field-label">${this.escapeHtml(this.formatFieldLabel(key))}</div>
+                    <div class="metadata-field-value">${this.formatValueHtml(key, value)}</div>
+                </div>`;
+            }
+
+            getFormData() {
+                const container = document.getElementById('metadataContainer');
+                if (!container) return {};
+
+                const inputs = container.querySelectorAll('[data-field]');
+                const formData = {};
+
+                inputs.forEach(input => {
+                    const fieldName = input.getAttribute('data-field');
+                    if (!fieldName) return;
+
+                    if (input.tagName === 'SELECT') {
+                        const val = input.value;
+                        if (val === 'true') formData[fieldName] = true;
+                        else if (val === 'false') formData[fieldName] = false;
+                        else formData[fieldName] = val;
+                    } else if (input.type === 'checkbox') {
+                        formData[fieldName] = input.checked;
+                    } else {
+                        formData[fieldName] = input.value;
+                    }
+                });
+
+                return formData;
+            }
+
+            renderJDDMetadataCard(record) {
+                let html = '<div class="metadata-card">';
+
+                // En-tête
+                const title = record.Libelle || record.LibelleCourt || record.IdentifiantJeuDonnees || 'Fiche Jeu de Données';
+                const idVal = record.IdentifiantJeuDonnees || record.id || 'N/A';
+
+                html += `<div class="metadata-card-header">
+                    <div>
+                        <div class="metadata-title">🌿 ${this.escapeHtml(title)}</div>
+                        ${record.LibelleCourt && record.LibelleCourt !== title ? `<div style="color: #666; font-size: 13px; margin-top: 4px;"><strong>Libellé court :</strong> ${this.escapeHtml(record.LibelleCourt)}</div>` : ''}
+                    </div>
+                    <div class="metadata-status">
+                        <span class="metadata-badge">JDD</span>
+                        <span class="metadata-badge secondary">ID: ${this.escapeHtml(idVal)}</span>
+                        ${this.isEditing ? '<span class="metadata-badge" style="background: var(--inpn-green); color: white;">✏️ Mode Édition</span>' : ''}
+                    </div>
+                </div>`;
+
+                // Extraction des acteurs
+                const actorFields = {};
+                const handledKeys = new Set(['id']);
+
+                for (const [actorType, config] of Object.entries(this.actorTypes)) {
+                    config.fields.forEach(f => {
+                        if (record[f] !== undefined && record[f] !== null && String(record[f]).trim() !== '') {
+                            if (!actorFields[actorType]) actorFields[actorType] = [];
+                            actorFields[actorType].push({ key: f, value: record[f] });
+                        }
+                    });
+                }
+
+                // Section Informations Générales
+                const generalKeys = [
+                    'IdentifiantJeuDonnees', 'Libelle', 'LibelleCourt', 'Description', 'Objectifs',
+                    'MotsCles', 'RattachementCadreAcquisition', 'BaseProduction', 'Territoires',
+                    'TypeDonnees', 'estContinental', 'estMarin', 'UUID', 'URL'
+                ];
+
+                html += `<div class="metadata-section">
+                    <div class="metadata-section-title">
+                        <span class="section-icon">📋</span>
+                        Informations Générales
+                    </div>
+                    <div class="metadata-rows">`;
+
+                generalKeys.forEach(k => {
+                    handledKeys.add(k);
+                    const isFull = ['Description', 'Objectifs', 'MotsCles', 'URL'].includes(k);
+                    html += this.renderFieldBlock(k, record[k], isFull);
+                });
+
+                html += `</div></div>`;
+
+                // Section Acteurs
+                const showActorsSection = this.isEditing || Object.keys(actorFields).length > 0 || record.mailContact;
+                if (showActorsSection) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">👥</span>
+                            Acteurs du Jeu de Données
+                        </div>
+                        <div class="actors-grid">`;
+
+                    if (this.isEditing) {
+                        // En mode édition : afficher tous les groupes d'acteurs configurés
+                        for (const [actorType, config] of Object.entries(this.actorTypes)) {
+                            html += `<div class="actor-group">
+                                <div class="actor-group-title">${config.icon} ${actorType}</div>`;
+
+                            config.fields.forEach(f => {
+                                handledKeys.add(f);
+                                html += `<div class="actor-detail">
+                                    <span class="actor-detail-label">${this.formatFieldLabel(f)}</span>
+                                    <span class="actor-detail-value">${this.renderFormField(f, record[f])}</span>
+                                </div>`;
+                            });
+
+                            html += `</div>`;
+                        }
+
+                        // Contact Général (mailContact)
+                        handledKeys.add('mailContact');
+                        html += `<div class="actor-group">
+                            <div class="actor-group-title">✉️ Contact Général</div>
+                            <div class="actor-detail">
+                                <span class="actor-detail-label">Email de contact (mailContact)</span>
+                                <span class="actor-detail-value">${this.renderFormField('mailContact', record.mailContact)}</span>
+                            </div>
+                        </div>`;
+                    } else {
+                        // En mode consultation : n'afficher que les acteurs renseignés
+                        for (const [actorType, config] of Object.entries(this.actorTypes)) {
+                            if (actorFields[actorType] && actorFields[actorType].length > 0) {
+                                html += `<div class="actor-group">
+                                    <div class="actor-group-title">${config.icon} ${actorType}</div>`;
+
+                                actorFields[actorType].forEach(item => {
+                                    handledKeys.add(item.key);
+                                    html += `<div class="actor-detail">
+                                        <span class="actor-detail-label">${this.formatFieldLabel(item.key)}</span>
+                                        <span class="actor-detail-value">${this.formatValueHtml(item.key, item.value)}</span>
+                                    </div>`;
+                                });
+
+                                html += `</div>`;
+                            }
+                        }
+
+                        if (record.mailContact) {
+                            handledKeys.add('mailContact');
+                            html += `<div class="actor-group">
+                                <div class="actor-group-title">✉️ Contact Général</div>
+                                <div class="actor-detail">
+                                    <span class="actor-detail-label">Email de contact</span>
+                                    <span class="actor-detail-value"><a href="mailto:${this.escapeHtml(record.mailContact)}">${this.escapeHtml(record.mailContact)}</a></span>
+                                </div>
+                            </div>`;
+                        }
+                    }
+
+                    html += `</div></div>`;
+                }
+
+                // Section Protocole
+                const protocolKeys = ['LibelleProtocole', 'TypeProtocole', 'DescriptionProtocole'];
+                const hasProtocol = this.isEditing || protocolKeys.some(k => record[k] && String(record[k]).trim() !== '');
+
+                if (hasProtocol) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">🔬</span>
+                            Protocole
+                        </div>
+                        <div class="metadata-rows">`;
+
+                    protocolKeys.forEach(k => {
+                        handledKeys.add(k);
+                        html += this.renderFieldBlock(k, record[k], true);
+                    });
+
+                    html += `</div></div>`;
+                }
+
+                // Section Administration / Métadonnées techniques
+                const integreKey = ('integre' in record) ? 'integre' : (('Integre' in record) ? 'Integre' : 'Intégré');
+                const adminKeys = ['Doublon', integreKey, 'Créé le', 'Dernière mise à jour'];
+                const hasAdmin = this.isEditing || adminKeys.some(k => record[k] !== undefined && record[k] !== null && String(record[k]).trim() !== '');
+
+                if (hasAdmin) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">⚙️</span>
+                            Administration & Métadonnées
+                        </div>
+                        <div class="metadata-rows">`;
+
+                    adminKeys.forEach(k => {
+                        handledKeys.add(k);
+                        html += this.renderFieldBlock(k, record[k], false);
+                    });
+
+                    html += `</div></div>`;
+                }
+
+
+                // Actions
+                if (!this.isEditing) {
+                    html += `<div class="metadata-actions">
+                        <button class="metadata-btn primary" onclick="viewer.downloadData()">
+                            ⬇️ Télécharger la table CSV (JDD)
+                        </button>
+                    </div>`;
+                }
+
+                html += '</div>';
+                return html;
+            }
+
+            renderCAMetadataCard(record) {
+                let html = '<div class="metadata-card">';
+
+                // En-tête
+                const title = record.LibelleCadreAcquisition || record.IdentifiantCadreAcquisition || 'Fiche Cadre d\'Acquisition';
+                const idVal = record.IdentifiantCadreAcquisition || record.id || 'N/A';
+
+                html += `<div class="metadata-card-header">
+                    <div>
+                        <div class="metadata-title">📁 ${this.escapeHtml(title)}</div>
+                        ${record.StatutAvancement ? `<div style="margin-top: 6px;"><span class="metadata-badge" style="background: var(--inpn-brown);">${this.escapeHtml(record.StatutAvancement)}</span></div>` : ''}
+                    </div>
+                    <div class="metadata-status">
+                        <span class="metadata-badge">Cadre d'Acquisition</span>
+                        <span class="metadata-badge secondary">ID: ${this.escapeHtml(idVal)}</span>
+                        ${this.isEditing ? '<span class="metadata-badge" style="background: var(--inpn-green); color: white;">✏️ Mode Édition</span>' : ''}
+                    </div>
+                </div>`;
+
+                const handledKeys = new Set(['id']);
+
+                // Section 1: Informations Générales
+                const generalKeys = [
+                    'LibelleCadreAcquisition', 'IdentifiantCadreAcquisition', 'DescriptionCadreAcquisition',
+                    'Objectifs', 'MotsCles', 'ReferenceMetacadre', 'estMetaCadre'
+                ];
+
+                html += `<div class="metadata-section">
+                    <div class="metadata-section-title">
+                        <span class="section-icon">📋</span>
+                        Informations Générales
+                    </div>
+                    <div class="metadata-rows">`;
+
+                generalKeys.forEach(k => {
+                    handledKeys.add(k);
+                    const isFull = ['DescriptionCadreAcquisition', 'Objectifs', 'MotsCles'].includes(k);
+                    html += this.renderFieldBlock(k, record[k], isFull);
+                });
+
+                html += `</div></div>`;
+
+                // Section 2: Temporalité & Territoires
+                const temporalKeys = [
+                    'StatutAvancement', 'DateLancement', 'DateCloture',
+                    'NiveauTerritorial', 'Territoires', 'PrecisionGeographique'
+                ];
+                const hasTemporal = this.isEditing || temporalKeys.some(k => record[k] !== undefined && record[k] !== null && String(record[k]).trim() !== '');
+
+                if (hasTemporal) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">🌍</span>
+                            Temporalité & Territoires
+                        </div>
+                        <div class="metadata-rows">`;
+
+                    temporalKeys.forEach(k => {
+                        handledKeys.add(k);
+                        const isFull = ['PrecisionGeographique', 'Territoires'].includes(k);
+                        html += this.renderFieldBlock(k, record[k], isFull);
+                    });
+
+                    html += `</div></div>`;
+                }
+
+                // Section 3: Démarche, Financement & Dépôt
+                const financeKeys = [
+                    'TypeFinancement', 'VoletSINP', 'IdentifiantProcedureDepot', 'FichierJointOuiNon'
+                ];
+                const hasFinance = this.isEditing || financeKeys.some(k => record[k] !== undefined && record[k] !== null && String(record[k]).trim() !== '');
+
+                if (hasFinance) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">💼</span>
+                            Modalités & Financement
+                        </div>
+                        <div class="metadata-rows">`;
+
+                    financeKeys.forEach(k => {
+                        handledKeys.add(k);
+                        html += this.renderFieldBlock(k, record[k], false);
+                    });
+
+                    html += `</div></div>`;
+                }
+
+                // Section 4: Cible Taxonomique
+                const taxoKeys = ['DescriptionCibleTaxo', 'NomFichierTaxonomique'];
+                const hasTaxo = this.isEditing || taxoKeys.some(k => record[k] && String(record[k]).trim() !== '');
+
+                if (hasTaxo) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">🦋</span>
+                            Cible Taxonomique
+                        </div>
+                        <div class="metadata-rows">`;
+
+                    taxoKeys.forEach(k => {
+                        handledKeys.add(k);
+                        html += this.renderFieldBlock(k, record[k], true);
+                    });
+
+                    html += `</div></div>`;
+                }
+
+                // Section 5: Administration & Métadonnées
+                const integreKey = ('integre' in record) ? 'integre' : (('Integre' in record) ? 'Integre' : 'Intégré');
+                const adminKeys = ['Doublon', integreKey, 'Créé le', 'Dernière mise à jour'];
+                const hasAdmin = this.isEditing || adminKeys.some(k => record[k] !== undefined && record[k] !== null && String(record[k]).trim() !== '');
+
+                if (hasAdmin) {
+                    html += `<div class="metadata-section">
+                        <div class="metadata-section-title">
+                            <span class="section-icon">⚙️</span>
+                            Administration & Métadonnées
+                        </div>
+                        <div class="metadata-rows">`;
+
+                    adminKeys.forEach(k => {
+                        handledKeys.add(k);
+                        html += this.renderFieldBlock(k, record[k], false);
+                    });
+
+                    html += `</div></div>`;
+                }
+
+
+                // Actions
+                if (!this.isEditing) {
+                    html += `<div class="metadata-actions">
+                        <button class="metadata-btn primary" onclick="viewer.downloadData()">
+                            ⬇️ Télécharger la table CSV (CA)
+                        </button>
+                    </div>`;
+                }
+
+                html += '</div>';
+                return html;
+            }
+
+            formatCellValue(field, value) {
+                if (value === null || value === undefined || value === '') return '<span style="color: #bbb;">—</span>';
+                if (typeof value === 'boolean' || value === 'true' || value === 'false') {
+                    const isTrue = value === true || value === 'true';
+                    return isTrue ? '<span class="bool-badge bool-true">Oui</span>' : '<span class="bool-badge bool-false">Non</span>';
+                }
+                if (field === 'Objectifs' && this.activeTable === 'JDD_Formulaire') {
+                    const resolved = this.formatObjectifsValue(value);
+                    if (!resolved) return '<span style="color: #bbb;">—</span>';
+                    return this.escapeHtml(resolved.length > 60 ? resolved.substring(0, 60) + '...' : resolved);
+                }
+                const str = String(value);
+                return this.escapeHtml(str.length > 60 ? str.substring(0, 60) + '...' : str);
+            }
+
+            formatValueHtml(key, value) {
+                if (value === null || value === undefined || value === '') {
+                    return '<span style="color: #bbb;">Non renseigné</span>';
+                }
+
+                if (typeof value === 'boolean' || value === 'true' || value === 'false') {
+                    const isTrue = value === true || value === 'true';
+                    return isTrue ? '<span class="bool-badge bool-true">Oui</span>' : '<span class="bool-badge bool-false">Non</span>';
+                }
+
+                if (key === 'Objectifs' && this.activeTable === 'JDD_Formulaire') {
+                    const resolved = this.formatObjectifsValue(value);
+                    if (!resolved) return '<span style="color: #bbb;">Non renseigné</span>';
+                    return this.escapeHtml(resolved);
+                }
+
+                const str = String(value);
+
+                // Détection URL
+                if (/^https?:\/\//i.test(str)) {
+                    return `<a href="${this.escapeHtml(str)}" target="_blank" rel="noopener noreferrer">${this.escapeHtml(str)} ↗</a>`;
+                }
+
+                // Détection email
+                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) {
+                    return `<a href="mailto:${this.escapeHtml(str)}">${this.escapeHtml(str)}</a>`;
+                }
+
+                return this.escapeHtml(str);
+            }
+
+            formatFieldLabel(key) {
+                if (this.fieldLabels[key]) return this.fieldLabels[key];
+                return key
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, str => str.toUpperCase())
+                    .trim();
+            }
+
+            escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            sortBy(field) {
+                const tableConfig = this.getCurrentTableConfig();
+                if (tableConfig.sortField === field) {
+                    tableConfig.sortOrder = tableConfig.sortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    tableConfig.sortField = field;
+                    tableConfig.sortOrder = 'asc';
+                }
+
+                tableConfig.filteredData.sort((a, b) => {
+                    let aVal = a[field] ?? '';
+                    let bVal = b[field] ?? '';
+
+                    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+                    if (aVal < bVal) return tableConfig.sortOrder === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return tableConfig.sortOrder === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
+                tableConfig.currentPage = 1;
+                this.render();
+            }
+
+            nextMetadata() {
+                if (this.isEditing) return;
+                const tableConfig = this.getCurrentTableConfig();
+                if (tableConfig.metadataIndex < tableConfig.filteredData.length - 1) {
+                    tableConfig.metadataIndex++;
+                    this.renderMetadataView();
+                }
+            }
+
+            previousMetadata() {
+                if (this.isEditing) return;
+                const tableConfig = this.getCurrentTableConfig();
+                if (tableConfig.metadataIndex > 0) {
+                    tableConfig.metadataIndex--;
+                    this.renderMetadataView();
+                }
+            }
+
+            goToPage(page) {
+                const tableConfig = this.getCurrentTableConfig();
+                const totalPages = this.getTotalPages();
+                if (page >= 1 && page <= totalPages) {
+                    tableConfig.currentPage = page;
+                    this.render();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+
+            renderPagination(view) {
+                const totalPages = this.getTotalPages();
+                const tableConfig = this.getCurrentTableConfig();
+                const paginationContainer = document.getElementById(view + 'Pagination');
+                if (!paginationContainer) return;
+
+                if (totalPages <= 1) {
+                    paginationContainer.innerHTML = '';
+                    return;
+                }
+
+                let html = `<button class="page-btn" ${tableConfig.currentPage === 1 ? 'disabled' : ''}
+                    onclick="viewer.goToPage(${tableConfig.currentPage - 1})">← Précédent</button>`;
+
+                const maxButtons = 5;
+                let startPage = Math.max(1, tableConfig.currentPage - Math.floor(maxButtons / 2));
+                let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                if (startPage > 1) {
+                    html += `<button class="page-btn" onclick="viewer.goToPage(1)">1</button>`;
+                    if (startPage > 2) html += '<span style="color: #ccc; padding: 0 4px;">...</span>';
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `<button class="page-btn ${i === tableConfig.currentPage ? 'active' : ''}"
+                        onclick="viewer.goToPage(${i})">${i}</button>`;
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += '<span style="color: #ccc; padding: 0 4px;">...</span>';
+                    html += `<button class="page-btn" onclick="viewer.goToPage(${totalPages})">${totalPages}</button>`;
+                }
+
+                html += `<button class="page-btn" ${tableConfig.currentPage === totalPages ? 'disabled' : ''}
+                    onclick="viewer.goToPage(${tableConfig.currentPage + 1})">Suivant →</button>`;
+
+                paginationContainer.innerHTML = html;
+            }
+
+            downloadData() {
+                const tableConfig = this.getCurrentTableConfig();
+                const dataToExport = tableConfig.filteredData;
+
+                if (!dataToExport || dataToExport.length === 0) {
+                    alert('Aucune donnée accessible à exporter. Veuillez renseigner un email de contact valide.');
+                    return;
+                }
+
+                const columns = [...new Set(dataToExport.flatMap(record => Object.keys(record)))];
+                const csvRows = [
+                    columns,
+                    ...dataToExport.map(record => columns.map(column => this.formatCsvValue(record[column])))
+                ];
+
+                const csv = '\uFEFF' + csvRows.map(row => row.join(';')).join('\r\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const date = new Date().toISOString().slice(0, 10);
+
+                link.href = url;
+                link.download = `${this.activeTable.toLowerCase()}-${date}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+            }
+
+            formatCsvValue(value) {
+                if (value === null || value === undefined) return '""';
+                const serializedValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                return `"${serializedValue.replace(/"/g, '""')}"`;
+            }
+        }
+
+        let viewer;
+        document.addEventListener('DOMContentLoaded', () => {
+            viewer = new MetadataViewer();
+        });
+    </script>
+</body>
+</html>
